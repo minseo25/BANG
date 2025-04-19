@@ -23,8 +23,8 @@ w = open(file_to_write,"wb")
 file1_to_write = file_to_write[:len(file_to_write)-4] + "_metadata" + file_to_write[len(file_to_write)-4:] 
 w1 = open(file1_to_write,"wb")
 with open(file_to_read, "rb") as f:
-        a=f.read(8)
-        filesize =struct.unpack('<Q',a)[0]
+        a=f.read(8) # read 8 bytes
+        filesize =struct.unpack('<Q',a)[0] # parse as little endian & unsigned long long int
         print(filesize)    #filesize
 
         a=f.read(8)
@@ -38,17 +38,17 @@ with open(file_to_read, "rb") as f:
         
         a=f.read(8)
         maxNodeLen =struct.unpack('<Q',a)[0]
-        print(maxNodeLen)    #max_node_len in bytes
+        print(maxNodeLen)    #max_node_len in bytes (node = embedding + neighbour info + other metadata)
         w1.write(a)
 
         a=f.read(8)
         nodesPerSec =struct.unpack('<Q',a)[0]
-        print(nodesPerSec)    #nnodes_per_sector
+        print(nodesPerSec)    #nnodes_per_sector (usually SECTORLEN/maxNodeLen)
 
 
-        w1.write(struct.pack('<I',int(DATATYPE)))
-        w1.write(struct.pack('<I',int(DIM)))
-        w1.write(struct.pack('<I',int(DEGREE)))
+        w1.write(struct.pack('<I',int(DATATYPE))) # pack as little endian & unsigned int
+        w1.write(struct.pack('<I',int(DIM))) # pack as little endian & unsigned int
+        w1.write(struct.pack('<I',int(DEGREE))) # pack as little endian & unsigned int
         print("Datatype = ", DATATYPE, "Datatype size =", DATATYPESIZE)
         NodesRead = 0
         # Sectores in file
@@ -56,16 +56,18 @@ with open(file_to_read, "rb") as f:
         i=0
         offset=0
         for i in range(int(filesize/SECTORLEN)-1):
-            f.seek((i+1)*SECTORLEN,0)
+            f.seek((i+1)*SECTORLEN,0) # 0: start of file, offset: i-th sector
             # Nodes in a Sector
             for j in range(nodesPerSec):
+                # structure of a node
+                # | embedding (DIM * DATATYPESIZE) | degree (4 bytes) | neighbour_ids (degree * 4 bytes) | padding ((DEGREE - degree) * 4 bytes)
                 if (NodesRead == total_nodes) :
                      continue
                 for dim in range(DIM):
                      b=f.read(int(DATATYPESIZE))
-                     w.write(b) 
+                     w.write(b) # write embedding to bin file
                 a=f.read(4)
-                w.write(a)   
+                w.write(a) # write degree to bin file
                 d=struct.unpack('<I',a)[0]
                 #strr=str(d)
                 #print("dim=",strr)
@@ -83,12 +85,12 @@ with open(file_to_read, "rb") as f:
                 #print(arr)
                 arr_sorted = np.sort(arr)
                 for l in range(d):
-                   w.write(struct.pack("<I",arr_sorted[l]))
+                   w.write(struct.pack("<I",arr_sorted[l])) # write neighbour ids (sorted) to bin file
                 #print(arr_sorted)
                 for kk in range(k+1,DEGREE):
                     #print(kk)
                     a=f.read(4)
-                    w.write(a)
+                    w.write(a) # write padding to bin file
                 NodesRead=NodesRead+1
                 
                 if(NodesRead % 10000 == 0):
